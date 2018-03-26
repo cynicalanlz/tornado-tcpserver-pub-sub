@@ -1,5 +1,7 @@
 import socket
 import struct
+from functools import reduce
+from operator import xor
 from tornado import gen
 from tornado.iostream import IOStream
 from tornado.log import app_log
@@ -33,7 +35,10 @@ msg = [
     FIELD_VALUE
     ]
 
-msg = b''.join(msg)
+msg1 = b''.join(msg)
+bytes_arr = memoryview(msg1).cast('B')
+msg.append(struct.pack('>B', reduce(xor, msg1)))
+msg1 = b''.join(msg)
 
 
 class TCPServerTest(AsyncTestCase):
@@ -58,7 +63,7 @@ class TCPServerTest(AsyncTestCase):
 
             client = IOStream(socket.socket())        
             yield client.connect(('localhost', port))
-            yield client.write(msg)
+            yield client.write(msg1)
             results = yield client.read_bytes(4)
             assert results == b'\x11\x00\x01\x10'
 
@@ -79,13 +84,13 @@ class TCPServerTest(AsyncTestCase):
 
     #         with NullContext():
     #             server = StatusServer()
-
+    #             server.add_socket(sock)
+                
     #             notify_server = NotifyServer()
     #             notify_server.add_socket(sock2)
 
     #             server.notify_server = notify_server
 
-    #             server.add_socket(sock)
 
     #         client = IOStream(socket.socket())
     #         client2 = IOStream(socket.socket()) 

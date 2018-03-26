@@ -2,7 +2,9 @@
 import socket
 import struct
 from time import sleep
-
+from operator import xor
+from functools import reduce
+import select
 
 HOST = '127.0.0.1'
 PORT = 8888
@@ -19,6 +21,7 @@ MESSAGE_NUM = struct.pack('>H', 1)
 TEST_SOURCE_NAME = 'valera01'.encode('ascii') 
 NUM_FIELDS = struct.pack('>B', 1)
 FIELD_NAME = '~~~~~~~1'.encode('ascii') 
+FIELD_NAME2 = '~~~~~~~2'.encode('ascii') 
 FIELD_VALUE = struct.pack('>L', 1)
 
 
@@ -52,24 +55,51 @@ try:
     # 8 байт - имя поля (ascii-строка)
     # 4 байта - значение поля (беззнаковое целое)
     # 1 байт - побайтовый XOR от сообщения
+
     msg = [
         (HEADER).to_bytes(1, byteorder='big'),          
         MESSAGE_NUM,        
         TEST_SOURCE_NAME,   
-        (ACTIVE).to_bytes(1, byteorder='big'),     
-    
+        (ACTIVE).to_bytes(1, byteorder='big'),         
         NUM_FIELDS,
         FIELD_NAME,
         FIELD_VALUE
         ]
 
-    msg = b''.join(msg)
-
-    s.send(msg)
+    msg1 = b''.join(msg)
+    bytes_arr = memoryview(msg1).cast('B')
+    msg.append(struct.pack('>B', reduce(xor, msg1)))
+    msg1 = b''.join(msg)
+  
+    msg = [
+        (HEADER).to_bytes(1, byteorder='big'),          
+        struct.pack('>H', 2),        
+        TEST_SOURCE_NAME,   
+        (ACTIVE).to_bytes(1, byteorder='big'),         
+        struct.pack('>B', 2),
+        FIELD_NAME,
+        FIELD_VALUE,
+        FIELD_NAME2,
+        FIELD_VALUE,
+    ]
+    msg2 = b''.join(msg)
+    bytes_arr = memoryview(msg2).cast('B')
+    msg.append(struct.pack('>B', reduce(xor, msg2)))
+    msg2 = b''.join(msg)
+  
+    s.send(msg1)
     q = s.recv(4)
 
-    while True:
-        s.recv(4)
+
+    # s.send(msg2)
+    # q = s.recv(4)
+
+
+    ready = select.select([s], [], [], 10)
+    if ready[0]:
+        data = s.recv(4)
+        print(data)
+
 
     # s.shutdown(5)
     print("Success connecting to ")
