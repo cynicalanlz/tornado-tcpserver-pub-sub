@@ -5,10 +5,11 @@ from time import sleep
 from operator import xor
 from functools import reduce
 import select
+import random 
 
 HOST = '127.0.0.1'
 PORT = 8888
-
+PORT2 = 8889
 
 # Header
 HEADER = 0x01
@@ -37,14 +38,25 @@ msg = [
 
 msg = b''.join(msg)
 
-s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+s1 = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+s2 = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+s3 = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+s4 = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+
+write_sockets = [
+    s1,
+    s2,
+    s3,
+]
 
 
 
 try:
-    s.connect((HOST, PORT))
+    for s in write_sockets:
+        s.connect((HOST, PORT))    
+        s.setblocking(0)
+        s.settimeout(random.randint(1, 10))
     
-    s.settimeout(100)
 
     # 1 байт - header (всегда 0x01)
     # 2 байта - номер сообщения в пределах данного подключения (беззнаковое целое)
@@ -86,19 +98,21 @@ try:
     bytes_arr = memoryview(msg2).cast('B')
     msg.append(struct.pack('>B', reduce(xor, msg2)))
     msg2 = b''.join(msg)
-  
-    s.send(msg1)
-    q = s.recv(4)
 
+    for s in write_sockets:
+        s.send(msg1)
+        s.recv(4)
+        s.send(msg2)
+        s.recv(4)
 
-    # s.send(msg2)
-    # q = s.recv(4)
+    readable, writable, exceptional  = select.select(write_sockets, [], [], 10)
 
-
-    ready = select.select([s], [], [], 10)
-    if ready[0]:
-        data = s.recv(4)
-        print(data)
+    while write_sockets:
+        if readable:
+            for s in readable:
+                data = s.recv(4)
+                if data != '':
+                    print(data)
 
 
     # s.shutdown(5)

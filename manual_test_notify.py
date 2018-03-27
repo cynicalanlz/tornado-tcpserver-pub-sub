@@ -27,7 +27,6 @@ PORT = 8889
 
 s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
-
 try:
     s.connect((HOST, PORT))
     s.setblocking(0)    
@@ -36,7 +35,6 @@ try:
         ready = select.select([s], [], [], 1000)
         if ready[0]:
             data = s.recv(4096)
-            logger.info(data)
             print(data)
 
     # s.shutdown(5)

@@ -197,6 +197,7 @@ class Notification(object):
 
         current_time = int(round(time.time() * 1000))
         exit_lines = []
+        logging.info(client_connections)
         for client_name, client_interface in client_connections.items():        
             exit_lines.append(
                 b''.join([
@@ -209,7 +210,8 @@ class Notification(object):
                     struct.pack('>Q', current_time - client_interface.last_message_time),
                     ord('\n').to_bytes(1, byteorder='big'),
                 ]))
-            self.stream.write(b''.join(exit_lines))        
+        logging.info('listing currently connected sockets %s', b''.join(exit_lines))
+        self.stream.write(b''.join(exit_lines))        
     
     def _on_close(self):
         logger.info('notification client quit %s - %s', self.address, self.conn_id)
